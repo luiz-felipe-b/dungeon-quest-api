@@ -1,0 +1,1 @@
+"""App package for Dungeon Quest 2 API."""
