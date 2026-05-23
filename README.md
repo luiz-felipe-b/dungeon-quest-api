@@ -42,7 +42,7 @@ curl http://localhost:8080/api/users/00000000-0000-0000-0000-000000000123
 
 curl -X POST http://localhost:8080/api/users ^
 	-H "Content-Type: application/json" ^
-	-d '{"username":"aventureiro123","password":"senha_super_secreta","high_score":0,"active":true}'
+	-d '{"user_name":"aventureiro123","password":"senha_super_secreta","high_score":0,"active":true}'
 
 curl -X PATCH http://localhost:8080/api/users/00000000-0000-0000-0000-000000000123 ^
 	-H "Content-Type: application/json" ^

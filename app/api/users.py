@@ -1,4 +1,6 @@
 from typing import Any, Dict, List
+import hashlib
+import os
 
 from fastapi import APIRouter, Body, HTTPException, Path, Query
 from psycopg import sql
@@ -6,6 +8,20 @@ from psycopg import sql
 from app.api.db import delete_row, fetch_all, fetch_one, insert_row, update_row
 
 router = APIRouter(prefix="/users", tags=["Usuários"])
+
+
+def hash_password(password: str) -> str:
+    if not isinstance(password, str) or not password:
+        raise HTTPException(status_code=400, detail="password must be a non-empty string")
+    salt = os.getenv("PASSWORD_SALT", "")
+    digest = hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
+    return digest
+
+
+def strip_encrypted_password(user: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = dict(user)
+    sanitized.pop("encrypted_password", None)
+    return sanitized
 
 
 @router.get(
@@ -18,8 +34,7 @@ router = APIRouter(prefix="/users", tags=["Usuários"])
                     "example": [
                         {
                             "id": "00000000-0000-0000-0000-000000000123",
-                            "username": "aventureiro123",
-                            "password": "senha_super_secreta",
+                            "user_name": "aventureiro123",
                             "high_score": 4200,
                             "active": True,
                         }
@@ -42,9 +57,9 @@ def list_users(
         examples={"deslocamento": {"summary": "Offset de registros", "value": 0}},
     ),
 ):
-    query = sql.SQL("SELECT * FROM {table} LIMIT %(limit)s OFFSET %(offset)s").format(
-        table=sql.Identifier("users")
-    )
+    query = sql.SQL(
+        "SELECT id, user_name, high_score, active FROM {table} LIMIT %(limit)s OFFSET %(offset)s"
+    ).format(table=sql.Identifier("users"))
     return fetch_all(query, {"limit": limit, "offset": offset})
 
 
@@ -57,8 +72,7 @@ def list_users(
                 "application/json": {
                     "example": {
                         "id": "00000000-0000-0000-0000-000000000123",
-                        "username": "aventureiro123",
-                        "password": "senha_super_secreta",
+                        "user_name": "aventureiro123",
                         "high_score": 4200,
                         "active": True,
                     }
@@ -78,9 +92,9 @@ def get_user(
         },
     )
 ):
-    query = sql.SQL("SELECT * FROM {table} WHERE id = %(target_id)s").format(
-        table=sql.Identifier("users")
-    )
+    query = sql.SQL(
+        "SELECT id, user_name, high_score, active FROM {table} WHERE id = %(target_id)s"
+    ).format(table=sql.Identifier("users"))
     response = fetch_one(query, {"target_id": user_id})
     if not response:
         raise HTTPException(status_code=404, detail="User not found")
@@ -97,8 +111,7 @@ def get_user(
                 "application/json": {
                     "example": {
                         "id": "00000000-0000-0000-0000-000000000123",
-                        "username": "aventureiro123",
-                        "password": "senha_super_secreta",
+                        "user_name": "aventureiro123",
                         "high_score": 0,
                         "active": True,
                     }
@@ -111,7 +124,7 @@ def create_user(
     payload: Dict[str, Any] = Body(
         ...,
         example={
-            "username": "aventureiro123",
+            "user_name": "aventureiro123",
             "password": "senha_super_secreta",
             "high_score": 0,
             "active": True,
@@ -120,7 +133,7 @@ def create_user(
             "criar": {
                 "summary": "Criar usuário",
                 "value": {
-                    "username": "aventureiro123",
+                    "user_name": "aventureiro123",
                     "password": "senha_super_secreta",
                     "high_score": 0,
                     "active": True,
@@ -129,7 +142,12 @@ def create_user(
         },
     )
 ):
-    return insert_row("users", payload)
+    if "password" not in payload:
+        raise HTTPException(status_code=400, detail="password is required")
+    to_insert = dict(payload)
+    to_insert["encrypted_password"] = hash_password(str(to_insert.pop("password")))
+    created = insert_row("users", to_insert)
+    return strip_encrypted_password(created)
 
 
 @router.patch(
@@ -141,8 +159,7 @@ def create_user(
                 "application/json": {
                     "example": {
                         "id": "00000000-0000-0000-0000-000000000123",
-                        "username": "aventureiro123",
-                        "password": "senha_super_secreta",
+                        "user_name": "aventureiro123",
                         "high_score": 4200,
                         "active": True,
                     }
@@ -178,10 +195,13 @@ def update_user(
         },
     ),
 ):
-    response = update_row("users", user_id, payload)
+    to_update = dict(payload)
+    if "password" in to_update:
+        to_update["encrypted_password"] = hash_password(str(to_update.pop("password")))
+    response = update_row("users", user_id, to_update)
     if not response:
         raise HTTPException(status_code=404, detail="User not found")
-    return response
+    return strip_encrypted_password(response)
 
 
 @router.delete("/{user_id}", status_code=204)
