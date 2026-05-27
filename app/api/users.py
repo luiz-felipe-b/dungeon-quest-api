@@ -220,3 +220,47 @@ def delete_user(
     if not response:
         raise HTTPException(status_code=404, detail="User not found")
     return None
+
+
+@router.post(
+    "/login",
+    response_model=Dict[str, bool],
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {"valid": True}
+                }
+            }
+        }
+    },
+)
+def login_user(
+    payload: Dict[str, Any] = Body(
+        ...,
+        example={
+            "user_name": "aventureiro123",
+            "password": "senha_super_secreta",
+        },
+        examples={
+            "login": {
+                "summary": "Login de usuário",
+                "value": {
+                    "user_name": "aventureiro123",
+                    "password": "senha_super_secreta",
+                },
+            }
+        },
+    )
+):
+    user_name = payload.get("user_name")
+    password = payload.get("password")
+    if not user_name or not password:
+        raise HTTPException(status_code=400, detail="user_name and password are required")
+    query = sql.SQL(
+        "SELECT encrypted_password FROM {table} WHERE user_name = %(user_name)s"
+    ).format(table=sql.Identifier("users"))
+    record = fetch_one(query, {"user_name": user_name})
+    if not record:
+        return {"valid": False}
+    return {"valid": record.get("encrypted_password") == hash_password(str(password))}
