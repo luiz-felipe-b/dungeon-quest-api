@@ -25,6 +25,13 @@ router = APIRouter(prefix="/questions", tags=["Perguntas"])
                                 "00000000-0000-0000-0000-000000000001",
                                 "00000000-0000-0000-0000-000000000002",
                             ],
+                            "choices": [
+                                {
+                                    "id": "00000000-0000-0000-0000-000000000321",
+                                    "label": "Brasilia",
+                                    "question_id": "00000000-0000-0000-0000-000000000789",
+                                }
+                            ],
                         }
                     ]
                 }
@@ -48,7 +55,23 @@ def list_questions(
     query = sql.SQL("SELECT * FROM {table} LIMIT %(limit)s OFFSET %(offset)s").format(
         table=sql.Identifier("questions")
     )
-    return fetch_all(query, {"limit": limit, "offset": offset})
+    questions = fetch_all(query, {"limit": limit, "offset": offset})
+    if not questions:
+        return questions
+
+    question_ids = [question["id"] for question in questions]
+    choices_query = sql.SQL("SELECT * FROM {table} WHERE question = ANY(%(question_ids)s)").format(
+        table=sql.Identifier("choices")
+    )
+    choices = fetch_all(choices_query, {"question_ids": question_ids})
+    choices_by_question: Dict[str, List[Dict[str, Any]]] = {}
+    for choice in choices:
+        choices_by_question.setdefault(choice["question"], []).append(choice)
+
+    for question in questions:
+        question["choices"] = choices_by_question.get(question["id"], [])
+
+    return questions
 
 
 @router.get(
