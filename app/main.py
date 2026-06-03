@@ -34,13 +34,13 @@ app.add_middleware(
     responses={
         200: {
             "content": {
-                "application/json": {"example": {"status": "ok"}}
+                "application/json": {"example": {"response": {"status": "ok"}}}
             }
         }
     },
 )
 def health_check() -> Dict[str, str]:
-    return {"status": "ok"}
+    return {"response": {"status": "ok"}}
 
 app.include_router(users_router, prefix="/api")
 app.include_router(tags_router, prefix="/api")

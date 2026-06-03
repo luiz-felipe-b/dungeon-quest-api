@@ -10,23 +10,32 @@ router = APIRouter(prefix="/questions", tags=["Perguntas"])
 
 @router.get(
     "",
-    response_model=List[Dict[str, Any]],
+    response_model=Dict[str, Any],
     responses={
         200: {
             "content": {
                 "application/json": {
-                    "example": [
-                        {
-                            "id": "00000000-0000-0000-0000-000000000789",
-                            "prompt": "Qual e a capital do Brasil?",
-                            "answer_id": "00000000-0000-0000-0000-000000000000",
-                            "answer_explanation": "Brasilia e a capital do Brasil.",
-                            "tag_ids": [
-                                "00000000-0000-0000-0000-000000000001",
-                                "00000000-0000-0000-0000-000000000002",
-                            ],
-                        }
-                    ]
+                    "example": {
+                        "response": [
+                            {
+                                "id": "00000000-0000-0000-0000-000000000789",
+                                "prompt": "Qual e a capital do Brasil?",
+                                "answer_id": "00000000-0000-0000-0000-000000000000",
+                                "answer_explanation": "Brasilia e a capital do Brasil.",
+                                "tag_ids": [
+                                    "00000000-0000-0000-0000-000000000001",
+                                    "00000000-0000-0000-0000-000000000002",
+                                ],
+                                "choices": [
+                                    {
+                                        "id": "00000000-0000-0000-0000-000000000321",
+                                        "label": "Brasilia",
+                                        "question_id": "00000000-0000-0000-0000-000000000789",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
                 }
             }
         }
@@ -48,7 +57,23 @@ def list_questions(
     query = sql.SQL("SELECT * FROM {table} LIMIT %(limit)s OFFSET %(offset)s").format(
         table=sql.Identifier("questions")
     )
-    return fetch_all(query, {"limit": limit, "offset": offset})
+    questions = fetch_all(query, {"limit": limit, "offset": offset})
+    if not questions:
+        return questions
+
+    question_ids = [question["id"] for question in questions]
+    choices_query = sql.SQL("SELECT * FROM {table} WHERE question = ANY(%(question_ids)s)").format(
+        table=sql.Identifier("choices")
+    )
+    choices = fetch_all(choices_query, {"question_ids": question_ids})
+    choices_by_question: Dict[str, List[Dict[str, Any]]] = {}
+    for choice in choices:
+        choices_by_question.setdefault(choice["question"], []).append(choice)
+
+    for question in questions:
+        question["choices"] = choices_by_question.get(question["id"], [])
+
+    return {"response": questions}
 
 
 @router.get(
@@ -59,14 +84,16 @@ def list_questions(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000789",
-                        "prompt": "Qual e a capital do Brasil?",
-                        "answer_id": "00000000-0000-0000-0000-000000000000",
-                        "answer_explanation": "Brasilia e a capital do Brasil.",
-                        "tag_ids": [
-                            "00000000-0000-0000-0000-000000000001",
-                            "00000000-0000-0000-0000-000000000002",
-                        ],
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000789",
+                            "prompt": "Qual e a capital do Brasil?",
+                            "answer_id": "00000000-0000-0000-0000-000000000000",
+                            "answer_explanation": "Brasilia e a capital do Brasil.",
+                            "tag_ids": [
+                                "00000000-0000-0000-0000-000000000001",
+                                "00000000-0000-0000-0000-000000000002",
+                            ],
+                        }
                     }
                 }
             }
@@ -90,7 +117,7 @@ def get_question(
     response = fetch_one(query, {"target_id": question_id})
     if not response:
         raise HTTPException(status_code=404, detail="Question not found")
-    return response
+    return {"response": response}
 
 
 @router.post(
@@ -102,14 +129,16 @@ def get_question(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000789",
-                        "prompt": "Qual e a capital do Brasil?",
-                        "answer_id": "00000000-0000-0000-0000-000000000000",
-                        "answer_explanation": "Brasilia e a capital do Brasil.",
-                        "tag_ids": [
-                            "00000000-0000-0000-0000-000000000001",
-                            "00000000-0000-0000-0000-000000000002",
-                        ],
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000789",
+                            "prompt": "Qual e a capital do Brasil?",
+                            "answer_id": "00000000-0000-0000-0000-000000000000",
+                            "answer_explanation": "Brasilia e a capital do Brasil.",
+                            "tag_ids": [
+                                "00000000-0000-0000-0000-000000000001",
+                                "00000000-0000-0000-0000-000000000002",
+                            ],
+                        }
                     }
                 }
             }
@@ -144,7 +173,7 @@ def create_question(
         },
     )
 ):
-    return insert_row("questions", payload)
+    return {"response": insert_row("questions", payload)}
 
 
 @router.patch(
@@ -155,11 +184,13 @@ def create_question(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000789",
-                        "prompt": "Qual e a capital da Argentina?",
-                        "answer_id": "00000000-0000-0000-0000-000000000000",
-                        "answer_explanation": "Buenos Aires e a capital da Argentina.",
-                        "tag_ids": ["00000000-0000-0000-0000-000000000003"],
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000789",
+                            "prompt": "Qual e a capital da Argentina?",
+                            "answer_id": "00000000-0000-0000-0000-000000000000",
+                            "answer_explanation": "Buenos Aires e a capital da Argentina.",
+                            "tag_ids": ["00000000-0000-0000-0000-000000000003"],
+                        }
                     }
                 }
             }
@@ -198,10 +229,10 @@ def update_question(
     response = update_row("questions", question_id, payload)
     if not response:
         raise HTTPException(status_code=404, detail="Question not found")
-    return response
+    return {"response": response}
 
 
-@router.delete("/{question_id}", status_code=204)
+@router.delete("/{question_id}", status_code=200)
 def delete_question(
     question_id: str = Path(
         ...,
@@ -216,4 +247,4 @@ def delete_question(
     response = delete_row("questions", question_id)
     if not response:
         raise HTTPException(status_code=404, detail="Question not found")
-    return None
+    return {"response": None}

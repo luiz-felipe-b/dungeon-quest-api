@@ -26,19 +26,21 @@ def strip_encrypted_password(user: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get(
     "",
-    response_model=List[Dict[str, Any]],
+    response_model=Dict[str, Any],
     responses={
         200: {
             "content": {
                 "application/json": {
-                    "example": [
-                        {
-                            "id": "00000000-0000-0000-0000-000000000123",
-                            "user_name": "aventureiro123",
-                            "high_score": 4200,
-                            "active": True,
-                        }
-                    ]
+                    "example": {
+                        "response": [
+                            {
+                                "id": "00000000-0000-0000-0000-000000000123",
+                                "user_name": "aventureiro123",
+                                "high_score": 4200,
+                                "active": True,
+                            }
+                        ]
+                    }
                 }
             }
         }
@@ -60,7 +62,7 @@ def list_users(
     query = sql.SQL(
         "SELECT id, user_name, high_score, active FROM {table} LIMIT %(limit)s OFFSET %(offset)s"
     ).format(table=sql.Identifier("users"))
-    return fetch_all(query, {"limit": limit, "offset": offset})
+    return {"response": fetch_all(query, {"limit": limit, "offset": offset})}
 
 
 @router.get(
@@ -71,10 +73,12 @@ def list_users(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000123",
-                        "user_name": "aventureiro123",
-                        "high_score": 4200,
-                        "active": True,
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000123",
+                            "user_name": "aventureiro123",
+                            "high_score": 4200,
+                            "active": True,
+                        }
                     }
                 }
             }
@@ -98,7 +102,7 @@ def get_user(
     response = fetch_one(query, {"target_id": user_id})
     if not response:
         raise HTTPException(status_code=404, detail="User not found")
-    return response
+    return {"response": response}
 
 
 @router.post(
@@ -110,10 +114,12 @@ def get_user(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000123",
-                        "user_name": "aventureiro123",
-                        "high_score": 0,
-                        "active": True,
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000123",
+                            "user_name": "aventureiro123",
+                            "high_score": 0,
+                            "active": True,
+                        }
                     }
                 }
             }
@@ -147,7 +153,7 @@ def create_user(
     to_insert = dict(payload)
     to_insert["encrypted_password"] = hash_password(str(to_insert.pop("password")))
     created = insert_row("users", to_insert)
-    return strip_encrypted_password(created)
+    return {"response": strip_encrypted_password(created)}
 
 
 @router.patch(
@@ -158,10 +164,12 @@ def create_user(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000123",
-                        "user_name": "aventureiro123",
-                        "high_score": 4200,
-                        "active": True,
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000123",
+                            "user_name": "aventureiro123",
+                            "high_score": 4200,
+                            "active": True,
+                        }
                     }
                 }
             }
@@ -201,10 +209,10 @@ def update_user(
     response = update_row("users", user_id, to_update)
     if not response:
         raise HTTPException(status_code=404, detail="User not found")
-    return strip_encrypted_password(response)
+    return {"response": strip_encrypted_password(response)}
 
 
-@router.delete("/{user_id}", status_code=204)
+@router.delete("/{user_id}", status_code=200)
 def delete_user(
     user_id: str = Path(
         ...,
@@ -219,17 +227,17 @@ def delete_user(
     response = delete_row("users", user_id)
     if not response:
         raise HTTPException(status_code=404, detail="User not found")
-    return None
+    return {"response": None}
 
 
 @router.post(
     "/login",
-    response_model=Dict[str, bool],
+    response_model=Dict[str, Any],
     responses={
         200: {
             "content": {
                 "application/json": {
-                    "example": {"valid": True}
+                    "example": {"response": {"valid": True}}
                 }
             }
         }
@@ -262,5 +270,9 @@ def login_user(
     ).format(table=sql.Identifier("users"))
     record = fetch_one(query, {"user_name": user_name})
     if not record:
-        return {"valid": False}
-    return {"valid": record.get("encrypted_password") == hash_password(str(password))}
+        return {"response": {"valid": False}}
+    return {
+        "response": {
+            "valid": record.get("encrypted_password") == hash_password(str(password))
+        }
+    }

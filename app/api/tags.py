@@ -10,17 +10,19 @@ router = APIRouter(prefix="/tags", tags=["Tags"])
 
 @router.get(
     "",
-    response_model=List[Dict[str, Any]],
+    response_model=Dict[str, Any],
     responses={
         200: {
             "content": {
                 "application/json": {
-                    "example": [
-                        {
-                            "id": "00000000-0000-0000-0000-000000000456",
-                            "label": "historia",
-                        }
-                    ]
+                    "example": {
+                        "response": [
+                            {
+                                "id": "00000000-0000-0000-0000-000000000456",
+                                "label": "historia",
+                            }
+                        ]
+                    }
                 }
             }
         }
@@ -42,7 +44,7 @@ def list_tags(
     query = sql.SQL("SELECT * FROM {table} LIMIT %(limit)s OFFSET %(offset)s").format(
         table=sql.Identifier("tags")
     )
-    return fetch_all(query, {"limit": limit, "offset": offset})
+    return {"response": fetch_all(query, {"limit": limit, "offset": offset})}
 
 
 @router.get(
@@ -53,8 +55,10 @@ def list_tags(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000456",
-                        "label": "historia",
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000456",
+                            "label": "historia",
+                        }
                     }
                 }
             }
@@ -78,7 +82,7 @@ def get_tag(
     response = fetch_one(query, {"target_id": tag_id})
     if not response:
         raise HTTPException(status_code=404, detail="Tag not found")
-    return response
+    return {"response": response}
 
 
 @router.post(
@@ -90,8 +94,10 @@ def get_tag(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000456",
-                        "label": "historia",
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000456",
+                            "label": "historia",
+                        }
                     }
                 }
             }
@@ -114,7 +120,7 @@ def create_tag(
         },
     )
 ):
-    return insert_row("tags", payload)
+    return {"response": insert_row("tags", payload)}
 
 
 @router.patch(
@@ -125,8 +131,10 @@ def create_tag(
             "content": {
                 "application/json": {
                     "example": {
-                        "id": "00000000-0000-0000-0000-000000000456",
-                        "label": "geografia",
+                        "response": {
+                            "id": "00000000-0000-0000-0000-000000000456",
+                            "label": "geografia",
+                        }
                     }
                 }
             }
@@ -161,10 +169,10 @@ def update_tag(
     response = update_row("tags", tag_id, payload)
     if not response:
         raise HTTPException(status_code=404, detail="Tag not found")
-    return response
+    return {"response": response}
 
 
-@router.delete("/{tag_id}", status_code=204)
+@router.delete("/{tag_id}", status_code=200)
 def delete_tag(
     tag_id: str = Path(
         ...,
@@ -179,4 +187,4 @@ def delete_tag(
     response = delete_row("tags", tag_id)
     if not response:
         raise HTTPException(status_code=404, detail="Tag not found")
-    return None
+    return {"response": None}
