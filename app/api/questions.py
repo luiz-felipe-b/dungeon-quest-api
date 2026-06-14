@@ -132,7 +132,7 @@ def get_question(
                         "response": {
                             "id": "00000000-0000-0000-0000-000000000789",
                             "prompt": "Qual e a capital do Brasil?",
-                            "answer_id": "00000000-0000-0000-0000-000000000000",
+                            "answer_id": "00000000-0000-0000-0000-000000000321",
                             "answer_explanation": "Brasilia e a capital do Brasil.",
                             "tag_ids": [
                                 "00000000-0000-0000-0000-000000000001",
@@ -170,8 +170,10 @@ def get_question(
 def create_question(
     payload: Dict[str, Any] = Body(
         ...,
+        description="Crie uma pergunta com alternativas ou sem. Se as alternativas forem fornecidas no atributo 'choices', o 'answer_id' não é necessário - ele será definido automaticamente pela alternativa marcada como correta. Se nenhuma alternativa for fornecida, 'answer_id' é obrigatório.",
         example={
             "prompt": "Qual e a capital do Brasil?",
+            "created_by": "00000000-0000-0000-0000-000000000123",
             "answer_id": "00000000-0000-0000-0000-000000000000",
             "answer_explanation": "Brasilia e a capital do Brasil.",
             "tag_ids": [
@@ -179,40 +181,74 @@ def create_question(
                 "00000000-0000-0000-0000-000000000002",
             ],
             "choices": [
-                {"label": "Brasilia"},
+                {"label": "Brasilia", "correct": True},
                 {"label": "Rio de Janeiro"},
                 {"label": "São Paulo"},
                 {"label": "Salvador"},
             ],
         },
         examples={
-            "criar": {
-                "summary": "Criar pergunta com 4 alternativas",
+            "criar_com_alternativas": {
+                "summary": "Criar pergunta com 4 alternativas (uma marcada como correta)",
                 "value": {
                     "prompt": "Qual é a capital do Brasil?",
-                    "answer_id": "00000000-0000-0000-0000-000000000000",
                     "answer_explanation": "Brasília é a capital do Brasil.",
+                    "created_by": "00000000-0000-0000-0000-000000000123",
                     "tag_ids": [
                         "00000000-0000-0000-0000-000000000001",
                         "00000000-0000-0000-0000-000000000002"
                     ],
                     "choices": [
-                        {"label": "Brasília"},
+                        {"label": "Brasília", "correct": True},
                         {"label": "Rio de Janeiro"},
                         {"label": "São Paulo"},
                         {"label": "Salvador"},
+                    ],
+                },
+            },
+            "criar_sem_alternativas": {
+                "summary": "Criar pergunta sem alternativas",
+                "value": {
+                    "prompt": "Qual é a capital da Argentina?",
+                    "answer_id": "00000000-0000-0000-0000-000000000999",
+                    "created_by": "00000000-0000-0000-0000-000000000123",
+                    "answer_explanation": "Buenos Aires é a capital da Argentina.",
+                    "tag_ids": [
+                        "00000000-0000-0000-0000-000000000003"
                     ],
                 },
             }
         },
     )
 ):
-    # Validate choices
+
+    # Validate created_by
+    created_by = payload.get("created_by")
+    if not created_by:
+        raise HTTPException(
+            status_code=400,
+            detail="created_by is required"
+        )
+    
     choices = payload.pop("choices", [])
+
+    # If no choices, just create the question with answer_id
+    if not choices:
+        return {"response": insert_row("questions", payload)}
+
+    # Validate exactly 4 choices
     if len(choices) != 4:
         raise HTTPException(
             status_code=400,
             detail="Exactly 4 choices are required",
+        )
+
+    # Validate at most 1 choice has correct=true
+    correct_choices = [c for c in choices if c.get("correct", False)]
+    if len(correct_choices) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Only one choice can be marked as correct",
         )
 
     # Create the question
@@ -220,13 +256,24 @@ def create_question(
 
     # Create the 4 choices
     created_choices = []
+    correct_choice_id = None
     for choice in choices:
         choice_payload = {
             "label": choice.get("label"),
             "question": question["id"],
+            "created_by": created_by,
         }
         created_choice = insert_row("choices", choice_payload)
         created_choices.append(created_choice)
+
+        # Track the correct choice ID
+        if choice.get("correct", False):
+            correct_choice_id = created_choice["id"]
+
+    # If one choice was marked as correct, update the question's answer_id
+    if correct_choice_id:
+        update_payload = {"answer": correct_choice_id}
+        question = update_row("questions", question["id"], update_payload)
 
     question["choices"] = created_choices
     return {"response": question}
