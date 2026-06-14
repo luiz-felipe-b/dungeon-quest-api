@@ -327,6 +327,127 @@ def add_question_to_pack(
     return {"response": insert_row("question_question_packs", insertion_payload)}
 
 
+@router.post(
+    "/{pack_id}/questions/batch",
+    response_model=Dict[str, Any],
+    status_code=201,
+    responses={
+        201: {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "response": {
+                            "added": 3,
+                            "question_ids": [
+                                "00000000-0000-0000-0000-000000000789",
+                                "00000000-0000-0000-0000-000000000790",
+                                "00000000-0000-0000-0000-000000000791",
+                            ],
+                            "results": [
+                                {
+                                    "id": 1,
+                                    "question_pack_id": "00000000-0000-0000-0000-000000000001",
+                                    "question_id": "00000000-0000-0000-0000-000000000789",
+                                    "created_at": "2026-06-14T10:00:00Z",
+                                },
+                                {
+                                    "id": 2,
+                                    "question_pack_id": "00000000-0000-0000-0000-000000000001",
+                                    "question_id": "00000000-0000-0000-0000-000000000790",
+                                    "created_at": "2026-06-14T10:00:00Z",
+                                },
+                                {
+                                    "id": 3,
+                                    "question_pack_id": "00000000-0000-0000-0000-000000000001",
+                                    "question_id": "00000000-0000-0000-0000-000000000791",
+                                    "created_at": "2026-06-14T10:00:00Z",
+                                },
+                            ],
+                        }
+                    }
+                }
+            }
+        }
+    },
+)
+def add_questions_to_pack_batch(
+    pack_id: str = Path(
+        ...,
+        examples={
+            "id": {
+                "summary": "ID do pacote de perguntas",
+                "value": "00000000-0000-0000-0000-000000000001",
+            }
+        },
+    ),
+    payload: Dict[str, Any] = Body(
+        ...,
+        example={
+            "question_ids": [
+                "00000000-0000-0000-0000-000000000789",
+                "00000000-0000-0000-0000-000000000790",
+            ],
+        },
+        examples={
+            "adicionar_lote": {
+                "summary": "Adicionar múltiplas perguntas ao pacote",
+                "value": {
+                    "question_ids": [
+                        "00000000-0000-0000-0000-000000000789",
+                        "00000000-0000-0000-0000-000000000790",
+                    ],
+                },
+            }
+        },
+    ),
+):
+    question_ids = payload.get("question_ids", [])
+    if not question_ids or not isinstance(question_ids, list):
+        raise HTTPException(
+            status_code=400, detail="question_ids must be a non-empty list"
+        )
+
+    # Verify pack exists
+    query = sql.SQL("SELECT id FROM {table} WHERE id = %(target_id)s").format(
+        table=sql.Identifier("question_packs")
+    )
+    pack = fetch_one(query, {"target_id": pack_id})
+    if not pack:
+        raise HTTPException(status_code=404, detail="Question pack not found")
+
+    # Verify all questions exist
+    query = sql.SQL(
+        "SELECT id FROM {table} WHERE id = ANY(%(question_ids)s)"
+    ).format(table=sql.Identifier("questions"))
+    existing_questions = fetch_all(query, {"question_ids": question_ids})
+    existing_ids = {q["id"] for q in existing_questions}
+
+    missing_ids = set(question_ids) - existing_ids
+    if missing_ids:
+        raise HTTPException(
+            status_code=404,
+            detail=f"The following questions were not found: {', '.join(str(id) for id in missing_ids)}",
+        )
+
+    # Insert all relationships
+    results = []
+    for qid in question_ids:
+        insertion_payload = {
+            "question_pack_id": pack_id,
+            "question_id": qid,
+        }
+        result = insert_row("question_question_packs", insertion_payload)
+        results.append(result)
+
+    return {
+        "response": {
+            "added": len(results),
+            "question_ids": question_ids,
+            "results": results,
+        }
+    }
+
+
 @router.delete(
     "/{pack_id}/questions/{question_id}",
     status_code=200,
