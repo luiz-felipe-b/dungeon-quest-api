@@ -237,7 +237,12 @@ def delete_user(
         200: {
             "content": {
                 "application/json": {
-                    "example": {"response": {"valid": True}}
+                    "example": {"response": {"valid": True, "user": {
+                        "id": "00000000-0000-0000-0000-000000000123",
+                        "user_name": "aventureiro123",
+                        "high_score": 4200,
+                        "active": True
+                    }}}
                 }
             }
         }
@@ -266,13 +271,20 @@ def login_user(
     if not user_name or not password:
         raise HTTPException(status_code=400, detail="user_name and password are required")
     query = sql.SQL(
-        "SELECT encrypted_password FROM {table} WHERE user_name = %(user_name)s"
+        "SELECT id, user_name, high_score, active, encrypted_password FROM {table} WHERE user_name = %(user_name)s"
     ).format(table=sql.Identifier("users"))
     record = fetch_one(query, {"user_name": user_name})
-    if not record:
+    print(record)
+    if not record or record.get("encrypted_password") != hash_password(str(password)):
         return {"response": {"valid": False}}
     return {
         "response": {
-            "valid": record.get("encrypted_password") == hash_password(str(password))
+            "valid": True,
+            "user": record.get("id") and {
+                "id": record.get("id"),
+                "user_name": record.get("user_name"),
+                "high_score": record.get("high_score"),
+                "active": record.get("active")
+            }
         }
     }
