@@ -138,6 +138,28 @@ def get_question(
                                 "00000000-0000-0000-0000-000000000001",
                                 "00000000-0000-0000-0000-000000000002",
                             ],
+                            "choices": [
+                                {
+                                    "id": "00000000-0000-0000-0000-000000000321",
+                                    "label": "Brasilia",
+                                    "question": "00000000-0000-0000-0000-000000000789",
+                                },
+                                {
+                                    "id": "00000000-0000-0000-0000-000000000322",
+                                    "label": "Rio de Janeiro",
+                                    "question": "00000000-0000-0000-0000-000000000789",
+                                },
+                                {
+                                    "id": "00000000-0000-0000-0000-000000000323",
+                                    "label": "São Paulo",
+                                    "question": "00000000-0000-0000-0000-000000000789",
+                                },
+                                {
+                                    "id": "00000000-0000-0000-0000-000000000324",
+                                    "label": "Salvador",
+                                    "question": "00000000-0000-0000-0000-000000000789",
+                                },
+                            ],
                         }
                     }
                 }
@@ -156,10 +178,16 @@ def create_question(
                 "00000000-0000-0000-0000-000000000001",
                 "00000000-0000-0000-0000-000000000002",
             ],
+            "choices": [
+                {"label": "Brasilia"},
+                {"label": "Rio de Janeiro"},
+                {"label": "São Paulo"},
+                {"label": "Salvador"},
+            ],
         },
         examples={
             "criar": {
-                "summary": "Criar pergunta",
+                "summary": "Criar pergunta com 4 alternativas",
                 "value": {
                     "prompt": "Qual é a capital do Brasil?",
                     "answer_id": "00000000-0000-0000-0000-000000000000",
@@ -167,13 +195,41 @@ def create_question(
                     "tag_ids": [
                         "00000000-0000-0000-0000-000000000001",
                         "00000000-0000-0000-0000-000000000002"
-                    ]
+                    ],
+                    "choices": [
+                        {"label": "Brasília"},
+                        {"label": "Rio de Janeiro"},
+                        {"label": "São Paulo"},
+                        {"label": "Salvador"},
+                    ],
                 },
             }
         },
     )
 ):
-    return {"response": insert_row("questions", payload)}
+    # Validate choices
+    choices = payload.pop("choices", [])
+    if len(choices) != 4:
+        raise HTTPException(
+            status_code=400,
+            detail="Exactly 4 choices are required",
+        )
+
+    # Create the question
+    question = insert_row("questions", payload)
+
+    # Create the 4 choices
+    created_choices = []
+    for choice in choices:
+        choice_payload = {
+            "label": choice.get("label"),
+            "question": question["id"],
+        }
+        created_choice = insert_row("choices", choice_payload)
+        created_choices.append(created_choice)
+
+    question["choices"] = created_choices
+    return {"response": question}
 
 
 @router.patch(
