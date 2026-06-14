@@ -176,7 +176,7 @@ def create_question(
             "created_by": "00000000-0000-0000-0000-000000000123",
             "answer_id": "00000000-0000-0000-0000-000000000000",
             "answer_explanation": "Brasilia e a capital do Brasil.",
-            "tag_ids": [
+            "tags": [
                 "00000000-0000-0000-0000-000000000001",
                 "00000000-0000-0000-0000-000000000002",
             ],
@@ -194,7 +194,7 @@ def create_question(
                     "prompt": "Qual é a capital do Brasil?",
                     "answer_explanation": "Brasília é a capital do Brasil.",
                     "created_by": "00000000-0000-0000-0000-000000000123",
-                    "tag_ids": [
+                    "tags": [
                         "00000000-0000-0000-0000-000000000001",
                         "00000000-0000-0000-0000-000000000002"
                     ],
@@ -213,7 +213,7 @@ def create_question(
                     "answer_id": "00000000-0000-0000-0000-000000000999",
                     "created_by": "00000000-0000-0000-0000-000000000123",
                     "answer_explanation": "Buenos Aires é a capital da Argentina.",
-                    "tag_ids": [
+                    "tags": [
                         "00000000-0000-0000-0000-000000000003"
                     ],
                 },
