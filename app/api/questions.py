@@ -119,6 +119,59 @@ def get_question(
         raise HTTPException(status_code=404, detail="Question not found")
     return {"response": response}
 
+@router.get(
+    "/tag/{tag_id}",
+    response_model=Dict[str, Any],
+)
+def get_questions_by_tag(
+    tag_id: str = Path(
+        ...,
+        description="UUID da tag"
+    )
+):
+    query = sql.SQL("""
+        SELECT *
+        FROM {table}
+        WHERE %(tag_id)s = ANY(tags)
+    """).format(
+        table=sql.Identifier("questions")
+    )
+
+    questions = fetch_all(query, {"tag_id": tag_id})
+
+    if not questions:
+        return {"response": []}
+
+    question_ids = [question["id"] for question in questions]
+
+    choices_query = sql.SQL("""
+        SELECT *
+        FROM {table}
+        WHERE question = ANY(%(question_ids)s)
+    """).format(
+        table=sql.Identifier("choices")
+    )
+
+    choices = fetch_all(
+        choices_query,
+        {"question_ids": question_ids}
+    )
+
+    choices_by_question: Dict[str, List[Dict[str, Any]]] = {}
+
+    for choice in choices:
+        choices_by_question.setdefault(
+            choice["question"],
+            []
+        ).append(choice)
+
+    for question in questions:
+        question["choices"] = choices_by_question.get(
+            question["id"],
+            []
+        )
+
+    return {"response": questions}
 
 @router.post(
     "",
