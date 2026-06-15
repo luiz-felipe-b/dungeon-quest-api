@@ -164,7 +164,8 @@ def get_room(
                             "code": "QUIZ123",
                             "created_at": "2026-06-14T10:00:00Z",
                             "owner": "00000000-0000-0000-0000-000000000100",
-                            "question_pack_id": "00000000-0000-0000-0000-000000000050",
+                            "level_quantity": 10,
+                            "tag_target": "variado"
                         }
                     }
                 }
@@ -178,7 +179,8 @@ def create_room(
         example={
             "title": "Quiz Night",
             "owner": "00000000-0000-0000-0000-000000000100",
-            "question_pack_id": "00000000-0000-0000-0000-000000000050",
+            "level_quantity": 10,
+            "tag_target": "variado"
         },
         examples={
             "criar": {
@@ -186,7 +188,8 @@ def create_room(
                 "value": {
                     "title": "Quiz Night",
                     "owner": "00000000-0000-0000-0000-000000000100",
-                    "question_pack_id": "00000000-0000-0000-0000-000000000050",
+                    "level_quantity": 10,
+                    "tag_target": "variado"
                 },
             }
         },
@@ -195,6 +198,15 @@ def create_room(
     if "title" not in payload or not payload.get("title"):
         raise HTTPException(status_code=400, detail="title is required")
     
+    if "owner" not in payload or not payload.get("owner"):
+        raise HTTPException(status_code=400, detail="owner is required")
+    
+    if "level_quantity" not in payload or not payload.get("level_quantity"):
+        payload["level_quantity"] = 5
+
+    if "tag_target" not in payload or not payload.get("tag_target"):
+        raise HTTPException(status_code=400, detail="tag_target is required")
+
     payload["code"] = generate_room_code()
     return {"response": insert_row("rooms", payload)}
 
