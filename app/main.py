@@ -14,7 +14,7 @@ openapi_tags = [
     {"name": "Tags", "description": "Gerenciamento de tags de perguntas."},
     {"name": "Perguntas", "description": "CRUD de perguntas do jogo."},
     {"name": "Alternativas", "description": "CRUD de alternativas para perguntas."},
-    {"name": "Pacotes de Perguntas", "description": "CRUD de pacotes de perguntas e gerenciamento de questões."},
+    # {"name": "Pacotes de Perguntas", "description": "CRUD de pacotes de perguntas e gerenciamento de questões."},
     {"name": "Salas", "description": "CRUD de salas e gerenciamento de usuários nas salas."},
 ]
 
@@ -50,6 +50,6 @@ app.include_router(users_router, prefix="/api")
 app.include_router(tags_router, prefix="/api")
 app.include_router(questions_router, prefix="/api")
 app.include_router(choices_router, prefix="/api")
-app.include_router(question_packs_router, prefix="/api")
+# app.include_router(question_packs_router, prefix="/api")
 app.include_router(rooms_router, prefix="/api")
 

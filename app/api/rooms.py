@@ -32,6 +32,8 @@ def generate_room_code() -> str:
                                 "created_at": "2026-06-14T10:00:00Z",
                                 "owner": "00000000-0000-0000-0000-000000000100",
                                 "question_pack_id": "00000000-0000-0000-0000-000000000050",
+                                "level_quantity": 10,
+                                "tag_target": "variado"
                             }
                         ]
                     }
@@ -74,6 +76,8 @@ def list_rooms(
                             "created_at": "2026-06-14T10:00:00Z",
                             "owner": "00000000-0000-0000-0000-000000000100",
                             "question_pack_id": "00000000-0000-0000-0000-000000000050",
+                            "level_quantity": 10,
+                            "tag_target": "variado"
                         }
                     }
                 }
@@ -116,6 +120,8 @@ def get_room_by_code(
                             "created_at": "2026-06-14T10:00:00Z",
                             "owner": "00000000-0000-0000-0000-000000000100",
                             "question_pack_id": "00000000-0000-0000-0000-000000000050",
+                            "level_quantity": 10,
+                            "tag_target": "variado"
                         }
                     }
                 }
